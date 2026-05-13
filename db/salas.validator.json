@@ -1,0 +1,40 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": [
+      "nombre",
+      "ubicacion",
+      "capacidad",
+      "estatus",
+      "tipo",
+      "idDepartamento"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "nombre": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "ubicacion": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "capacidad": {
+        "bsonType": ["int", "long"],
+        "minimum": 1
+      },
+      "estatus": {
+        "enum": ["DISPONIBLE", "OCUPADA", "EN_MANTENIMIENTO", "CLAUSURADA"]
+      },
+      "tipo": {
+        "enum": ["LABORATORIO", "AUDITORIO", "AULA", "OTRO"]
+      },
+      "idDepartamento": {
+        "bsonType": "objectId"
+      }
+    }
+  }
+}

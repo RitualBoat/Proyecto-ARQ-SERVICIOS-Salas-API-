@@ -1,0 +1,36 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": [
+      "nombre",
+      "descripcion",
+      "tipo",
+      "unidadMedida",
+      "cantidadUnidades"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "nombre": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "descripcion": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "tipo": {
+        "enum": ["ELECTRICO", "LIMPIEZA", "FERRETERIA", "HERRAMIENTA", "CONSUMIBLE", "PAPELERIA"]
+      },
+      "unidadMedida": {
+        "enum": ["KILOGRAMO(S)", "LITRO(S)", "GRAMO(S)", "MILILITRO(S)", "METRO(S)", "CENTIMETRO(S)"]
+      },
+      "cantidadUnidades": {
+        "bsonType": ["double", "int", "long", "decimal"],
+        "minimum": 0
+      }
+    }
+  }
+}

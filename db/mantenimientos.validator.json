@@ -1,0 +1,36 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": [
+      "estatus",
+      "fechaInicio",
+      "fechaFin",
+      "idSala",
+      "actividades"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "estatus": {
+        "enum": ["PENDIENTE", "ACTIVO", "CERRADO", "CANCELADO"]
+      },
+      "fechaInicio": {
+        "bsonType": "date"
+      },
+      "fechaFin": {
+        "bsonType": "date"
+      },
+      "idSala": {
+        "bsonType": "objectId"
+      },
+      "actividades": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "objectId"
+        }
+      }
+    }
+  }
+}

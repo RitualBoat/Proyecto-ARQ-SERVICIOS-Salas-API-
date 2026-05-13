@@ -1,0 +1,57 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": [
+      "nombre",
+      "descripcion",
+      "completado",
+      "observaciones",
+      "idTecnico",
+      "materiales"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "_id": {
+        "bsonType": "objectId"
+      },
+      "nombre": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "descripcion": {
+        "bsonType": "string",
+        "minLength": 1
+      },
+      "completado": {
+        "bsonType": "bool"
+      },
+      "observaciones": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "string",
+          "minLength": 1
+        }
+      },
+      "idTecnico": {
+        "bsonType": "objectId"
+      },
+      "materiales": {
+        "bsonType": "array",
+        "items": {
+          "bsonType": "object",
+          "required": ["idMaterial", "cantidad"],
+          "additionalProperties": false,
+          "properties": {
+            "idMaterial": {
+              "bsonType": "objectId"
+            },
+            "cantidad": {
+              "bsonType": ["int", "long"],
+              "minimum": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}
