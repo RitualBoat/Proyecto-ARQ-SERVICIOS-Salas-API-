@@ -9,6 +9,14 @@ from models import (
     MantenimientoUpdate,
     MantenimientoSalida,
     MantenimientosSalida,
+    MaterialCreate,
+    MaterialUpdate,
+    MaterialSalida,
+    MaterialesSalida,
+    ActividadCreate,
+    ActividadUpdate,
+    ActividadSalida,
+    ActividadesSalida,
 )
 from bson import ObjectId
 
@@ -337,4 +345,221 @@ class MantenimientoDAO:
         except Exception as ex:
             salida.codigo = 400
             salida.mensaje = f"Error al modificar el mantenimiento: {ex}"
+        return salida
+
+# --- Entidades Actividad y Material ---
+class ActividadDAO:
+    def __init__(self, db):
+        self.db = db
+        self.col = self.db.actividades
+        self.view = self.db.actividadesView
+
+    def crear(self, actividad: ActividadCreate):
+        salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(actividad.idTecnico):
+            salida.codigo = 400
+            salida.mensaje = "El idTecnico no es válido."
+            return salida
+            
+        try:
+            data = actividad.model_dump()
+            data["idTecnico"] = ObjectId(data["idTecnico"])
+            data["completado"] = False
+            data["observaciones"] = []
+            data["materiales"] = []
+            
+            result = self.col.insert_one(data)
+            salida.codigo = 201
+            salida.mensaje = f"Actividad creada exitosamente con id: {result.inserted_id}"
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error al crear actividad: {ex}"
+        return salida
+
+    def consulta_general(self):
+        salida = ActividadesSalida(codigo=0, mensaje="", actividades=[])
+        try:
+            salida.codigo = 200
+            salida.mensaje = "Listado de actividades"
+            salida.actividades = list(self.view.find().sort("_id", -1))
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def consulta_por_id(self, idActividad: str):
+        salida = ActividadSalida(codigo=0, mensaje="", actividad=None)
+        if not ObjectId.is_valid(idActividad):
+            salida.codigo = 400
+            salida.mensaje = "Formato de ID inválido."
+            return salida
+            
+        try:
+            res = self.view.find_one({"idActividad": idActividad})
+            if res:
+                salida.codigo = 200
+                salida.mensaje = "Detalle de la actividad"
+                salida.actividad = res
+            else:
+                salida.codigo = 404
+                salida.mensaje = "La actividad no existe."
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def modificar(self, actividad: ActividadUpdate, idActividad: str):
+        salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idActividad):
+            salida.codigo = 400
+            salida.mensaje = "Formato de ID inválido."
+            return salida
+            
+        try:
+            data = actividad.model_dump(exclude_unset=True)
+            if not data:
+                salida.codigo = 400
+                salida.mensaje = "Proporcione datos para actualizar."
+                return salida
+
+            result = self.col.update_one({"_id": ObjectId(idActividad)}, {"$set": data})
+            if result.matched_count == 0:
+                salida.codigo = 404
+                salida.mensaje = "La actividad no existe."
+            else:
+                salida.codigo = 200
+                salida.mensaje = "Actividad modificada con éxito."
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def eliminar(self, idActividad: str):
+        salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idActividad):
+            salida.codigo = 400
+            salida.mensaje = "Formato de ID inválido."
+            return salida
+            
+        try:
+            actividad = self.col.find_one({"_id": ObjectId(idActividad)})
+            if not actividad:
+                salida.codigo = 404
+                salida.mensaje = "La actividad no existe."
+                return salida
+                
+            if actividad.get("completado") is True:
+                salida.codigo = 400
+                salida.mensaje = "No se puede eliminar una actividad ya completada."
+                return salida
+                
+            self.col.delete_one({"_id": ObjectId(idActividad)})
+            salida.codigo = 200
+            salida.mensaje = "Actividad eliminada con éxito."
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+class MaterialDAO:
+    def __init__(self, db):
+        self.db = db
+        self.col = self.db.materiales
+        self.view = self.db.materialesView
+        self.col_actividades = self.db.actividades
+
+    def crear(self, material: MaterialCreate):
+        salida = Salida(codigo=0, mensaje="")
+        try:
+            data = material.model_dump()
+            result = self.col.insert_one(data)
+            salida.codigo = 201
+            salida.mensaje = f"Material creado exitosamente con id: {result.inserted_id}"
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def consulta_general(self):
+        salida = MaterialesSalida(codigo=0, mensaje="", materiales=[])
+        try:
+            salida.codigo = 200
+            salida.mensaje = "Listado de materiales"
+            salida.materiales = list(self.view.find().sort("nombre", 1))
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def consulta_por_id(self, idMaterial: str):
+        salida = MaterialSalida(codigo=0, mensaje="", material=None)
+        if not ObjectId.is_valid(idMaterial):
+            salida.codigo = 400
+            salida.mensaje = "Formato de ID inválido."
+            return salida
+        try:
+            res = self.view.find_one({"idMaterial": idMaterial})
+            if res:
+                salida.codigo = 200
+                salida.mensaje = "Detalle del material"
+                salida.material = res
+            else:
+                salida.codigo = 404
+                salida.mensaje = "El material no existe."
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def modificar(self, material: MaterialUpdate, idMaterial: str):
+        salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idMaterial):
+            salida.codigo = 400
+            salida.mensaje = "Formato de ID inválido."
+            return salida
+        try:
+            data = material.model_dump(exclude_unset=True)
+            if not data:
+                salida.codigo = 400
+                salida.mensaje = "Proporcione datos para modificar."
+                return salida
+
+            result = self.col.update_one({"_id": ObjectId(idMaterial)}, {"$set": data})
+            if result.matched_count == 0:
+                salida.codigo = 404
+                salida.mensaje = "El material no existe."
+            else:
+                salida.codigo = 200
+                salida.mensaje = "Material modificado con éxito."
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
+        return salida
+
+    def eliminar(self, idMaterial: str):
+        salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idMaterial):
+            salida.codigo = 400
+            salida.mensaje = "Formato de ID inválido."
+            return salida
+        try:
+            en_uso = self.col_actividades.find_one({
+                "materiales.idMaterial": ObjectId(idMaterial),
+                "completado": False
+            })
+            if en_uso:
+                salida.codigo = 400
+                salida.mensaje = "El material no puede eliminarse, está asignado a una actividad activa."
+                return salida
+                
+            result = self.col.delete_one({"_id": ObjectId(idMaterial)})
+            if result.deleted_count > 0:
+                salida.codigo = 200
+                salida.mensaje = "Material eliminado con éxito."
+            else:
+                salida.codigo = 404
+                salida.mensaje = "El material no existe."
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
         return salida
