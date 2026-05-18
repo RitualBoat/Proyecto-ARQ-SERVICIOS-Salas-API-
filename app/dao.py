@@ -63,6 +63,15 @@ class SalaDAO:
 
     def consulta_general(self):
         salida = SalasSalida(codigo=0, mensaje="", salas=[])
+        try:
+            salida.codigo = 200
+            salida.mensaje = "Listado de salas"
+            salida.salas = list(self.view.find())
+
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error al consultar las salas: {ex}"
+            salida.salas = None
         return salida
 
     def consulta_por_id(self, idSala: str):
