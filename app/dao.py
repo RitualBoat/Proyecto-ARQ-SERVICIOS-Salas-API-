@@ -1,3 +1,4 @@
+from pymongo import MongoClient
 from models import (
     Salida,
     SalaCreate,
@@ -9,11 +10,41 @@ from models import (
     MantenimientoSalida,
     MantenimientosSalida,
 )
+from bson import ObjectId
+
+DATABASE_URL = "mongodb://localhost:27017/"
+DATABASE = "SalasMantenimiento"
+
+
+class Conexion:
+    _cliente = None
+    _db = None
+
+    def __init__(self):
+        try:
+            self._cliente = MongoClient(DATABASE_URL)
+            self._db = self._cliente[DATABASE]
+            print(f"Conectado con la BD: {DATABASE}")
+        except Exception as ex:
+            print(f"Error al conectar con la BD a causa de: {ex}")
+
+    def cerrar(self):
+        try:
+            self._cliente.close()
+            print(f"Conexion cerrada con la BD:{DATABASE}")
+        except Exception as ex:
+            print(f"Error al cerrar con la BD a causa de: {ex}")
+
+    @property
+    def db(self):
+        return self._db
 
 
 class SalaDAO:
     def __init__(self, db):
-        return
+        self.db = db
+        self.col = self.db.salas
+        self.view = self.db.salasView
 
     def crear(self, sala: SalaCreate):
         salida = Salida(codigo=0, mensaje="")

@@ -11,7 +11,7 @@ from models import (
     MantenimientosSalida,
     MantenimientoSalida,
 )
-from dao import SalaDAO, MantenimientoDAO
+from dao import Conexion, SalaDAO, MantenimientoDAO
 
 app = FastAPI()
 
@@ -153,6 +153,16 @@ async def modificar_mantenimiento(
 
 
 # --- Eventos de ciclo de vida y arranque ---
+@app.on_event("startup")
+def startup():
+    conexion = Conexion()
+    app.cn = conexion
+
+
+@app.on_event("shutdown")
+def shutdown():
+    app.cn.cerrar()
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", reload=True)
