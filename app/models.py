@@ -1,6 +1,7 @@
 from pydantic import BaseModel, model_validator, Field
 from datetime import datetime, timezone
 from typing import List, Literal
+from typing import List, Literal, Optional
 
 
 # --- Modelos de ENTIDAD ---
@@ -97,3 +98,62 @@ class MantenimientoSalida(Salida):
 
 class MantenimientosSalida(Salida):
     mantenimientos: List[Mantenimiento] | None = None
+
+
+# --- Entidades Material y Actividad ---
+class Material(BaseModel):
+    idMaterial: str
+    nombre: str
+    descripcion: str
+    tipo: Literal["ELECTRICO", "LIMPIEZA", "FERRETERIA", "HERRAMIENTA", "CONSUMIBLE", "PAPELERIA"]
+    unidadMedida: Literal["KILOGRAMO(S)", "LITRO(S)", "GRAMO(S)", "MILILITRO(S)", "METRO(S)", "CENTIMETRO(S)"]
+    cantidadUnidades: float
+
+class Actividad(BaseModel):
+    idActividad: str
+    nombre: str
+    descripcion: str
+    completado: bool
+    observaciones: List[str]
+    idTecnico: str
+    materiales: List[dict]
+
+# --- Modelos de ENTRADA: Material ---
+class MaterialCreate(BaseModel):
+    nombre: str = Field(..., min_length=1)
+    descripcion: str = Field(..., min_length=1)
+    tipo: Literal["ELECTRICO", "LIMPIEZA", "FERRETERIA", "HERRAMIENTA", "CONSUMIBLE", "PAPELERIA"]
+    unidadMedida: Literal["KILOGRAMO(S)", "LITRO(S)", "GRAMO(S)", "MILILITRO(S)", "METRO(S)", "CENTIMETRO(S)"]
+    cantidadUnidades: float = Field(..., ge=0)
+
+class MaterialUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=1)
+    descripcion: Optional[str] = Field(None, min_length=1)
+    tipo: Optional[Literal["ELECTRICO", "LIMPIEZA", "FERRETERIA", "HERRAMIENTA", "CONSUMIBLE", "PAPELERIA"]] = None
+    unidadMedida: Optional[Literal["KILOGRAMO(S)", "LITRO(S)", "GRAMO(S)", "MILILITRO(S)", "METRO(S)", "CENTIMETRO(S)"]] = None
+    cantidadUnidades: Optional[float] = Field(None, ge=0)
+
+# --- Modelos de ENTRADA: Actividad ---
+class ActividadCreate(BaseModel):
+    nombre: str = Field(..., min_length=1)
+    descripcion: str = Field(..., min_length=1)
+    idTecnico: str
+
+class ActividadUpdate(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=1)
+    descripcion: Optional[str] = Field(None, min_length=1)
+    completado: Optional[bool] = None
+    observaciones: Optional[List[str]] = None
+
+# --- Modelos de SALIDA ---
+class MaterialSalida(Salida):
+    material: Optional[Material] = None
+
+class MaterialesSalida(Salida):
+    materiales: Optional[List[Material]] = None
+
+class ActividadSalida(Salida):
+    actividad: Optional[Actividad] = None
+
+class ActividadesSalida(Salida):
+    actividades: Optional[List[Actividad]] = None
