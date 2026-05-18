@@ -48,6 +48,17 @@ class SalaDAO:
 
     def crear(self, sala: SalaCreate):
         salida = Salida(codigo=0, mensaje="")
+        try:
+            data = sala.model_dump()
+            data["estatus"] = "DISPONIBLE"
+            result = self.col.insert_one(data)
+            salida.codigo = 201
+            salida.mensaje = "Sala creada exitosamente con id: " + str(
+                result.inserted_id
+            )
+        except Exception as ex:
+            salida.codigo = 500
+            salida.mensaje = f"Error: {ex}"
         return salida
 
     def consulta_general(self):
