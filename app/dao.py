@@ -99,6 +99,27 @@ class SalaDAO:
 
     def modificar(self, sala: SalaUpdate, idSala: str):
         salida = Salida(codigo=0, mensaje="")
+        try:
+            data = sala.model_dump(exclude_unset=True)
+            if not data:
+                salida.codigo = 400
+                salida.mensaje = "Debes proporcionar al menos un campo para modificar."
+                return salida
+
+            result = self.col.update_one({"_id": ObjectId(idSala)}, {"$set": data})
+
+            if result.matched_count == 0:
+                salida.codigo = 404
+                salida.mensaje = f"La sala con id: {idSala} no existe."
+            elif result.modified_count == 0:
+                salida.codigo = 200
+                salida.mensaje = "La sala existe, pero no hubo cambios que aplicar."
+            else:
+                salida.codigo = 200
+                salida.mensaje = f"La sala con id: {idSala} se modifico con exito."
+        except Exception as ex:
+            salida.codigo = 400
+            salida.mensaje = f"Error al modificar la sala: {ex}"
         return salida
 
     def eliminar(self, idSala: str):
