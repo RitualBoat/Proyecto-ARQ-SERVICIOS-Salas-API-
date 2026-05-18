@@ -87,6 +87,14 @@ class SalaDAO:
 
     def consulta_por_estatus(self, estatus):
         salida = SalasSalida(codigo=0, mensaje="", salas=[])
+        try:
+            salida.codigo = 200
+            salida.mensaje = "Listado de salas por estatus"
+            salida.salas = list(self.view.find({"estatus": estatus}))
+        except Exception as ex:
+            salida.codigo = 400
+            salida.mensaje = f"Error:{ex}"
+            salida.salas = None
         return salida
 
     def modificar(self, sala: SalaUpdate, idSala: str):
