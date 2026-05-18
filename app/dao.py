@@ -76,6 +76,13 @@ class SalaDAO:
 
     def consulta_por_id(self, idSala: str):
         salida = SalaSalida(codigo=0, mensaje="", sala=None)
+        try:
+            salida.codigo = 200
+            salida.mensaje = "Listado de la sala"
+            salida.sala = self.view.find_one({"idSala": idSala})
+        except Exception as ex:
+            salida.codigo = 400
+            salida.mensaje = f"Error:{ex}"
         return salida
 
     def consulta_por_estatus(self, estatus):
