@@ -124,6 +124,18 @@ class SalaDAO:
 
     def eliminar(self, idSala: str):
         salida = Salida(codigo=0, mensaje="")
+        try:
+            result = self.col.delete_one({"_id": ObjectId(idSala)})
+
+            if result.deleted_count == 0:
+                salida.codigo = 404
+                salida.mensaje = f"La sala con id: {idSala} no existe."
+            else:
+                salida.codigo = 200
+                salida.mensaje = f"La sala con id: {idSala} se elimino con exito."
+        except Exception as ex:
+            salida.codigo = 400
+            salida.mensaje = f"Error al eliminar la sala: {ex}"
         return salida
 
 
