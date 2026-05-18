@@ -66,8 +66,7 @@ class SalaDAO:
         try:
             salida.codigo = 200
             salida.mensaje = "Listado de salas"
-            salida.salas = list(self.view.find())
-
+            salida.salas = list(self.view.find().sort("nombre", 1))
         except Exception as ex:
             salida.codigo = 500
             salida.mensaje = f"Error al consultar las salas: {ex}"
@@ -77,9 +76,19 @@ class SalaDAO:
     def consulta_por_id(self, idSala: str):
         salida = SalaSalida(codigo=0, mensaje="", sala=None)
         try:
-            salida.codigo = 200
-            salida.mensaje = "Listado de la sala"
-            salida.sala = self.view.find_one({"idSala": idSala})
+            if not ObjectId.is_valid(idSala):
+                salida.codigo = 400
+                salida.mensaje = "El formato del ID no es válido."
+                return salida
+
+            res = self.view.find_one({"idSala": idSala})
+            if not res:
+                salida.codigo = 404
+                salida.mensaje = "La sala no existe."
+            else:
+                salida.codigo = 200
+                salida.mensaje = "Listado de la sala"
+                salida.sala = res
         except Exception as ex:
             salida.codigo = 400
             salida.mensaje = f"Error:{ex}"
@@ -87,6 +96,12 @@ class SalaDAO:
 
     def consulta_por_estatus(self, estatus):
         salida = SalasSalida(codigo=0, mensaje="", salas=[])
+        estatus_permitidos = ["DISPONIBLE", "OCUPADA", "EN_MANTENIMIENTO", "CLAUSURADA"]
+        if estatus not in estatus_permitidos:
+            salida.codigo = 400
+            salida.mensaje = f"El estatus '{estatus}' no es un valor permitido."
+            salida.salas = None
+            return salida
         try:
             salida.codigo = 200
             salida.mensaje = "Listado de salas por estatus"
@@ -99,6 +114,10 @@ class SalaDAO:
 
     def modificar(self, sala: SalaUpdate, idSala: str):
         salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idSala):
+            salida.codigo = 400
+            salida.mensaje = "El formato del ID no es válido."
+            return salida
         try:
             data = sala.model_dump(exclude_unset=True)
             if not data:
@@ -124,15 +143,27 @@ class SalaDAO:
 
     def eliminar(self, idSala: str):
         salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idSala):
+            salida.codigo = 400
+            salida.mensaje = "El formato del ID no es válido."
+            return salida
         try:
-            result = self.col.delete_one({"_id": ObjectId(idSala)})
-
-            if result.deleted_count == 0:
+            sala_existente = self.col.find_one({"_id": ObjectId(idSala)})
+            if not sala_existente:
                 salida.codigo = 404
                 salida.mensaje = f"La sala con id: {idSala} no existe."
-            else:
-                salida.codigo = 200
-                salida.mensaje = f"La sala con id: {idSala} se elimino con exito."
+                return salida
+
+            if sala_existente.get("estatus") != "CLAUSURADA":
+                salida.codigo = 400
+                salida.mensaje = (
+                    "No se permite eliminar la sala porque no está CLAUSURADA."
+                )
+                return salida
+
+            self.col.delete_one({"_id": ObjectId(idSala)})
+            salida.codigo = 200
+            salida.mensaje = f"La sala con id: {idSala} se elimino con exito."
         except Exception as ex:
             salida.codigo = 400
             salida.mensaje = f"Error al eliminar la sala: {ex}"
@@ -144,10 +175,30 @@ class MantenimientoDAO:
         self.db = db
         self.col = self.db.mantenimientos
         self.view = self.db.mantenimientosView
+        self.col_salas = self.db.salas
 
     def asignar(self, mantenimiento: MantenimientoCreate):
         salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(mantenimiento.idSala):
+            salida.codigo = 400
+            salida.mensaje = "El idSala proporcionado no es un ObjectId válido."
+            return salida
         try:
+            sala_asociada = self.col_salas.find_one(
+                {"_id": ObjectId(mantenimiento.idSala)}
+            )
+            if not sala_asociada:
+                salida.codigo = 404
+                salida.mensaje = "La sala informada no existe."
+                return salida
+
+            if sala_asociada.get("estatus") == "CLAUSURADA":
+                salida.codigo = 400
+                salida.mensaje = (
+                    "No se permite asignar mantenimiento a una sala CLAUSURADA."
+                )
+                return salida
+
             data = mantenimiento.model_dump()
             data["idSala"] = ObjectId(data["idSala"])
             data["estatus"] = "PENDIENTE"
@@ -167,7 +218,7 @@ class MantenimientoDAO:
         try:
             salida.codigo = 200
             salida.mensaje = "Listado de mantenimientos"
-            salida.mantenimientos = list(self.view.find())
+            salida.mantenimientos = list(self.view.find().sort("fechaInicio", -1))
         except Exception as ex:
             salida.codigo = 500
             salida.mensaje = f"Error al consultar los mantenimientos: {ex}"
@@ -177,6 +228,19 @@ class MantenimientoDAO:
     def consulta_por_id_sala(self, idSala: str):
         salida = MantenimientosSalida(codigo=0, mensaje="", mantenimientos=[])
         try:
+            if not ObjectId.is_valid(idSala):
+                salida.codigo = 400
+                salida.mensaje = "El formato del ID de sala no es válido."
+                salida.mantenimientos = None
+                return salida
+
+            sala_existe = self.col_salas.find_one({"_id": ObjectId(idSala)})
+            if not sala_existe:
+                salida.codigo = 404
+                salida.mensaje = "La sala informada no existe."
+                salida.mantenimientos = None
+                return salida
+
             salida.codigo = 200
             salida.mensaje = "Listado de mantenimientos por sala"
             salida.mantenimientos = list(self.view.find({"idSala": idSala}))
@@ -189,9 +253,19 @@ class MantenimientoDAO:
     def consulta_por_id(self, idMantenimiento: str):
         salida = MantenimientoSalida(codigo=0, mensaje="", mantenimiento=None)
         try:
-            salida.codigo = 200
-            salida.mensaje = "Listado del mantenimiento"
-            salida.mantenimiento = self.view.find_one({"idMantenimiento": idMantenimiento})
+            if not ObjectId.is_valid(idMantenimiento):
+                salida.codigo = 400
+                salida.mensaje = "El formato del ID de mantenimiento no es válido."
+                return salida
+
+            res = self.view.find_one({"idMantenimiento": idMantenimiento})
+            if not res:
+                salida.codigo = 404
+                salida.mensaje = "El mantenimiento no existe."
+            else:
+                salida.codigo = 200
+                salida.mensaje = "Listado del mantenimiento"
+                salida.mantenimiento = res
         except Exception as ex:
             salida.codigo = 400
             salida.mensaje = f"Error al consultar el mantenimiento: {ex}"
@@ -199,6 +273,14 @@ class MantenimientoDAO:
 
     def consulta_por_estatus(self, estatus):
         salida = MantenimientosSalida(codigo=0, mensaje="", mantenimientos=[])
+        estatus_permitidos = ["PENDIENTE", "ACTIVO", "CERRADO", "CANCELADO"]
+        if estatus not in estatus_permitidos:
+            salida.codigo = 400
+            salida.mensaje = (
+                f"El estatus '{estatus}' no pertenece al catálogo permitido."
+            )
+            salida.mantenimientos = None
+            return salida
         try:
             salida.codigo = 200
             salida.mensaje = "Listado de mantenimientos por estatus"
@@ -211,23 +293,42 @@ class MantenimientoDAO:
 
     def modificar(self, mantenimiento: MantenimientoUpdate, idMantenimiento: str):
         salida = Salida(codigo=0, mensaje="")
+        if not ObjectId.is_valid(idMantenimiento):
+            salida.codigo = 400
+            salida.mensaje = "El formato del ID no es válido."
+            return salida
         try:
+            mantenimiento_previo = self.col.find_one({"_id": ObjectId(idMantenimiento)})
+            if not mantenimiento_previo:
+                salida.codigo = 404
+                salida.mensaje = (
+                    f"El mantenimiento con id: {idMantenimiento} no existe."
+                )
+                return salida
+
             data = mantenimiento.model_dump(exclude_unset=True)
             if not data:
                 salida.codigo = 400
                 salida.mensaje = "Debes proporcionar al menos un campo para modificar."
                 return salida
 
+            nuevo_estatus = data.get("estatus")
+            if nuevo_estatus in ["CERRADO", "CANCELADO"]:
+                sala_id = mantenimiento_previo.get("idSala")
+                if sala_id:
+                    self.col_salas.update_one(
+                        {"_id": sala_id}, {"$set": {"estatus": "DISPONIBLE"}}
+                    )
+
             result = self.col.update_one(
                 {"_id": ObjectId(idMantenimiento)}, {"$set": data}
             )
 
-            if result.matched_count == 0:
-                salida.codigo = 404
-                salida.mensaje = f"El mantenimiento con id: {idMantenimiento} no existe."
-            elif result.modified_count == 0:
+            if result.modified_count == 0 and result.matched_count > 0:
                 salida.codigo = 200
-                salida.mensaje = "El mantenimiento existe, pero no hubo cambios que aplicar."
+                salida.mensaje = (
+                    "El mantenimiento existe, pero no hubo cambios que aplicar."
+                )
             else:
                 salida.codigo = 200
                 salida.mensaje = (
