@@ -1,0 +1,29 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": ["username", "password", "rol", "estatus"],
+    "properties": {
+      "_id": {
+        "bsonType": "objectId",
+        "description": "Identificador generado automáticamente por MongoDB"
+      },
+      "username": {
+        "bsonType": "string",
+        "description": "Nombre de usuario obligatorio para autenticación básica"
+      },
+      "password": {
+        "bsonType": "string",
+        "description": "Contrasena obligatoria para autenticación básica"
+      },
+      "rol": {
+        "enum": ["Administrador", "Tecnico", "Organizador"],
+        "description": "Rol obligatorio del usuario dentro del sistema"
+      },
+      "estatus": {
+        "enum": ["ACTIVO", "INACTIVO"],
+        "description": "Estatus obligatorio del usuario"
+      }
+    },
+    "additionalProperties": false
+  }
+}
