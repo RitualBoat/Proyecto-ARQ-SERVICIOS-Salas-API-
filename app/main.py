@@ -281,68 +281,156 @@ async def modificar_mantenimiento(
 
 # --- Endpoints de ACTIVIDAD ---
 @app.post("/actividades", tags=["Actividades"], summary="Crear Actividad", response_model=Salida)
-async def crear_actividad(request: Request, actividad: ActividadCreate) -> Salida:
-    dao = ActividadDAO(request.app.cn.db)
-    return dao.crear(actividad)
+@limiter.limit("5/minute")
+async def crear_actividad(
+    request: Request,
+    actividad: ActividadCreate,
+    user: Usuario = Depends(allow_admin_tecnico),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        actividadDAO = ActividadDAO(cn.db)
+        salida = actividadDAO.crear(actividad)
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.get("/actividades", tags=["Actividades"], summary="Listar Actividades", response_model=ActividadesSalida)
-async def listar_actividades(request: Request) -> ActividadesSalida:
-    dao = ActividadDAO(request.app.cn.db)
-    return dao.consulta_general()
+@limiter.limit("5/minute")
+async def listar_actividades(
+    request: Request,
+    user: Usuario = Depends(allow_all_roles),
+) -> ActividadesSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        actividadDAO = ActividadDAO(cn.db)
+        salida = actividadDAO.consulta_general()
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.get("/actividades/{idActividad}", tags=["Actividades"], summary="Consultar Actividad", response_model=ActividadSalida)
-async def listar_actividad(request: Request, idActividad: str) -> ActividadSalida:
-    dao = ActividadDAO(request.app.cn.db)
-    return dao.consulta_por_id(idActividad)
+@limiter.limit("5/minute")
+async def listar_actividad(
+    request: Request,
+    idActividad: str,
+    user: Usuario = Depends(allow_all_roles),
+) -> ActividadSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        actividadDAO = ActividadDAO(cn.db)
+        salida = actividadDAO.consulta_por_id(idActividad)
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.put("/actividades/{idActividad}", tags=["Actividades"], summary="Modificar Actividad", response_model=Salida)
-async def modificar_actividad(request: Request, actividad: ActividadUpdate, idActividad: str) -> Salida:
-    dao = ActividadDAO(request.app.cn.db)
-    return dao.modificar(actividad, idActividad)
+@limiter.limit("5/minute")
+async def modificar_actividad(
+    request: Request,
+    actividad: ActividadUpdate,
+    idActividad: str,
+    user: Usuario = Depends(allow_admin_tecnico),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        actividadDAO = ActividadDAO(cn.db)
+        salida = actividadDAO.modificar(actividad, idActividad)
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.delete("/actividades/{idActividad}", tags=["Actividades"], summary="Eliminar Actividad", response_model=Salida)
-async def eliminar_actividad(request: Request, idActividad: str) -> Salida:
-    dao = ActividadDAO(request.app.cn.db)
-    return dao.eliminar(idActividad)
+@limiter.limit("5/minute")
+async def eliminar_actividad(
+    request: Request,
+    idActividad: str,
+    user: Usuario = Depends(allow_admin_tecnico),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        actividadDAO = ActividadDAO(cn.db)
+        salida = actividadDAO.eliminar(idActividad)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 # --- Endpoints de MATERIAL ---
 @app.post("/materiales", tags=["Materiales"], summary="Crear Material", response_model=Salida)
-async def crear_material(request: Request, material: MaterialCreate) -> Salida:
-    dao = MaterialDAO(request.app.cn.db)
-    return dao.crear(material)
+@limiter.limit("5/minute")
+async def crear_material(
+    request: Request,
+    material: MaterialCreate,
+    user: Usuario = Depends(allow_admin_tecnico),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        materialDAO = MaterialDAO(cn.db)
+        salida = materialDAO.crear(material)
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.get("/materiales", tags=["Materiales"], summary="Listar Materiales", response_model=MaterialesSalida)
-async def listar_materiales(request: Request) -> MaterialesSalida:
-    dao = MaterialDAO(request.app.cn.db)
-    return dao.consulta_general()
+@limiter.limit("5/minute")
+async def listar_materiales(
+    request: Request,
+    user: Usuario = Depends(allow_all_roles),
+) -> MaterialesSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        materialDAO = MaterialDAO(cn.db)
+        salida = materialDAO.consulta_general()
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.get("/materiales/{idMaterial}", tags=["Materiales"], summary="Consultar Material", response_model=MaterialSalida)
-async def listar_material(request: Request, idMaterial: str) -> MaterialSalida:
-    dao = MaterialDAO(request.app.cn.db)
-    return dao.consulta_por_id(idMaterial)
+@limiter.limit("5/minute")
+async def listar_material(
+    request: Request,
+    idMaterial: str,
+    user: Usuario = Depends(allow_all_roles),
+) -> MaterialSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        materialDAO = MaterialDAO(cn.db)
+        salida = materialDAO.consulta_por_id(idMaterial)
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.put("/materiales/{idMaterial}", tags=["Materiales"], summary="Modificar Material", response_model=Salida)
-async def modificar_material(request: Request, material: MaterialUpdate, idMaterial: str) -> Salida:
-    dao = MaterialDAO(request.app.cn.db)
-    return dao.modificar(material, idMaterial)
+@limiter.limit("5/minute")
+async def modificar_material(
+    request: Request,
+    material: MaterialUpdate,
+    idMaterial: str,
+    user: Usuario = Depends(allow_admin_tecnico),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        materialDAO = MaterialDAO(cn.db)
+        salida = materialDAO.modificar(material, idMaterial)
+    finally:
+        cn.cerrar()
+    return salida
 
 @app.delete("/materiales/{idMaterial}", tags=["Materiales"], summary="Eliminar Material", response_model=Salida)
-async def eliminar_material(request: Request, idMaterial: str) -> Salida:
-    dao = MaterialDAO(request.app.cn.db)
-    return dao.eliminar(idMaterial)
-
-
-# --- Eventos de ciclo de vida y arranque ---
-@app.on_event("startup")
-def startup():
-    conexion = Conexion("", "")
-    app.cn = conexion
-
-
-@app.on_event("shutdown")
-def shutdown():
-    app.cn.cerrar()
+@limiter.limit("5/minute")
+async def eliminar_material(
+    request: Request,
+    idMaterial: str,
+    user: Usuario = Depends(allow_admin_tecnico),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        materialDAO = MaterialDAO(cn.db)
+        salida = materialDAO.eliminar(idMaterial)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 if __name__ == "__main__":
