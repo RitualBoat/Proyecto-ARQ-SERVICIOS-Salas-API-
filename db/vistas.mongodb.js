@@ -72,3 +72,15 @@ db.createView("materialesView", "materiales", [
     },
   },
 ]);
+
+db.createView("usuariosView", "usuarios", [
+  {
+    $project: {
+      _id: 0,
+      idUsuario: { $toString: "$_id" },
+      username: 1,
+      rol: 1,
+      estatus: 1,
+    },
+  },
+]);
