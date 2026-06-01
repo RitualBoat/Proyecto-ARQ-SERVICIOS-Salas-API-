@@ -17,10 +17,10 @@ from models import (
     ActividadUpdate,
     ActividadSalida,
     ActividadesSalida,
+    Usuario,
 )
 from bson import ObjectId
 
-DATABASE_URL = "mongodb://localhost:27017/"
 DATABASE = "SalasMantenimiento"
 
 
@@ -28,9 +28,16 @@ class Conexion:
     _cliente = None
     _db = None
 
-    def __init__(self):
+    def __init__(self, user, password):
         try:
-            self._cliente = MongoClient(DATABASE_URL)
+            if user and password:
+                self.DATABASEURL = (
+                    f"mongodb://{user}:{password}@localhost:27017/?authSource=admin"
+                )
+
+            else:
+                self.DATABASEURL = "mongodb://localhost:27017/"
+            self._cliente = MongoClient(self.DATABASEURL)
             self._db = self._cliente[DATABASE]
             print(f"Conectado con la BD: {DATABASE}")
         except Exception as ex:
@@ -45,7 +52,25 @@ class Conexion:
 
     @property
     def db(self):
-        return self._db
+        try:
+            return self._db
+        except Exception as ex:
+            print("Error al obtener la conexion")
+
+
+class UsuarioDAO:
+    def __init__(self, db):
+        self.db = db
+        self.col = self.db.usuarios
+
+    def autenticar(self, username: str, password: str):
+        result = self.col.find_one(
+            {"username": username, "password": password, "estatus": "ACTIVO"}
+        )
+        if result:
+            result.pop("_id", None)
+            return Usuario(**result)
+        return None
 
 
 class SalaDAO:
@@ -347,6 +372,7 @@ class MantenimientoDAO:
             salida.mensaje = f"Error al modificar el mantenimiento: {ex}"
         return salida
 
+
 # --- Entidades Actividad y Material ---
 class ActividadDAO:
     def __init__(self, db):
@@ -360,17 +386,19 @@ class ActividadDAO:
             salida.codigo = 400
             salida.mensaje = "El idTecnico no es válido."
             return salida
-            
+
         try:
             data = actividad.model_dump()
             data["idTecnico"] = ObjectId(data["idTecnico"])
             data["completado"] = False
             data["observaciones"] = []
             data["materiales"] = []
-            
+
             result = self.col.insert_one(data)
             salida.codigo = 201
-            salida.mensaje = f"Actividad creada exitosamente con id: {result.inserted_id}"
+            salida.mensaje = (
+                f"Actividad creada exitosamente con id: {result.inserted_id}"
+            )
         except Exception as ex:
             salida.codigo = 500
             salida.mensaje = f"Error al crear actividad: {ex}"
@@ -393,7 +421,7 @@ class ActividadDAO:
             salida.codigo = 400
             salida.mensaje = "Formato de ID inválido."
             return salida
-            
+
         try:
             res = self.view.find_one({"idActividad": idActividad})
             if res:
@@ -414,7 +442,7 @@ class ActividadDAO:
             salida.codigo = 400
             salida.mensaje = "Formato de ID inválido."
             return salida
-            
+
         try:
             data = actividad.model_dump(exclude_unset=True)
             if not data:
@@ -440,19 +468,19 @@ class ActividadDAO:
             salida.codigo = 400
             salida.mensaje = "Formato de ID inválido."
             return salida
-            
+
         try:
             actividad = self.col.find_one({"_id": ObjectId(idActividad)})
             if not actividad:
                 salida.codigo = 404
                 salida.mensaje = "La actividad no existe."
                 return salida
-                
+
             if actividad.get("completado") is True:
                 salida.codigo = 400
                 salida.mensaje = "No se puede eliminar una actividad ya completada."
                 return salida
-                
+
             self.col.delete_one({"_id": ObjectId(idActividad)})
             salida.codigo = 200
             salida.mensaje = "Actividad eliminada con éxito."
@@ -460,6 +488,7 @@ class ActividadDAO:
             salida.codigo = 500
             salida.mensaje = f"Error: {ex}"
         return salida
+
 
 class MaterialDAO:
     def __init__(self, db):
@@ -474,7 +503,9 @@ class MaterialDAO:
             data = material.model_dump()
             result = self.col.insert_one(data)
             salida.codigo = 201
-            salida.mensaje = f"Material creado exitosamente con id: {result.inserted_id}"
+            salida.mensaje = (
+                f"Material creado exitosamente con id: {result.inserted_id}"
+            )
         except Exception as ex:
             salida.codigo = 500
             salida.mensaje = f"Error: {ex}"
@@ -543,15 +574,14 @@ class MaterialDAO:
             salida.mensaje = "Formato de ID inválido."
             return salida
         try:
-            en_uso = self.col_actividades.find_one({
-                "materiales.idMaterial": ObjectId(idMaterial),
-                "completado": False
-            })
+            en_uso = self.col_actividades.find_one(
+                {"materiales.idMaterial": ObjectId(idMaterial), "completado": False}
+            )
             if en_uso:
                 salida.codigo = 400
                 salida.mensaje = "El material no puede eliminarse, está asignado a una actividad activa."
                 return salida
-                
+
             result = self.col.delete_one({"_id": ObjectId(idMaterial)})
             if result.deleted_count > 0:
                 salida.codigo = 200

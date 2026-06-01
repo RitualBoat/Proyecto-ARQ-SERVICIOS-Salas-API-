@@ -1,6 +1,5 @@
 from pydantic import BaseModel, model_validator, Field
 from datetime import datetime, timezone
-from typing import List, Literal
 from typing import List, Literal, Optional
 
 
@@ -157,3 +156,11 @@ class ActividadSalida(Salida):
 
 class ActividadesSalida(Salida):
     actividades: Optional[List[Actividad]] = None
+
+# --- Modelo de Usuario ---
+
+class Usuario(BaseModel):
+    username: str
+    password: str = Field(..., exclude=True, repr=False)
+    rol: Literal["Administrador", "Tecnico", "Organizador"]
+    estatus: Literal["ACTIVO", "INACTIVO"]
