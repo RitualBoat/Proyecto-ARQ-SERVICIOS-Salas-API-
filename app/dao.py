@@ -21,7 +21,7 @@ from models import (
 )
 from bson import ObjectId
 
-DATABASE = "salas_mantenimiento"
+DATABASE = "SalasMantenimiento"
 
 
 class Conexion:
