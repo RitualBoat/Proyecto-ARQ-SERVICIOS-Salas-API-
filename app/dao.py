@@ -21,7 +21,7 @@ from models import (
 )
 from bson import ObjectId
 
-DATABASE = "SalasMantenimiento"
+DATABASE = "salas_mantenimiento"
 
 
 class Conexion:
@@ -84,6 +84,7 @@ class SalaDAO:
         try:
             data = sala.model_dump()
             data["estatus"] = "DISPONIBLE"
+            data["idDepartamento"] = None
             result = self.col.insert_one(data)
             salida.codigo = 201
             salida.mensaje = "Sala creada exitosamente con id: " + str(
