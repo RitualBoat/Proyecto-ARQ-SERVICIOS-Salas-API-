@@ -1,5 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 import uvicorn
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 from models import (
     Salida,
     SalaCreate,
@@ -10,18 +14,29 @@ from models import (
     MantenimientoUpdate,
     MantenimientosSalida,
     MantenimientoSalida,
-    ActividadCreate, 
-    ActividadUpdate, 
-    ActividadSalida, 
-    ActividadesSalida, 
-    MaterialCreate, 
-    MaterialUpdate, 
-    MaterialSalida, 
-    MaterialesSalida
+    ActividadCreate,
+    ActividadUpdate,
+    ActividadSalida,
+    ActividadesSalida,
+    MaterialCreate,
+    MaterialUpdate,
+    MaterialSalida,
+    MaterialesSalida,
+    Usuario,
 )
 from dao import Conexion, SalaDAO, MantenimientoDAO, ActividadDAO, MaterialDAO
+from security import RoleChecker
 
 app = FastAPI()
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+allow_admin = RoleChecker(["Administrador"])
+allow_admin_tecnico = RoleChecker(["Administrador", "Tecnico"])
+allow_admin_organizador = RoleChecker(["Administrador", "Organizador"])
+allow_all_roles = RoleChecker(["Administrador", "Tecnico", "Organizador"])
 
 
 @app.get("/", tags=["Inicio"], summary="Home")
@@ -31,23 +46,52 @@ def home():
 
 # --- Endpoints de SALA ---
 @app.post("/salas", tags=["Salas"], summary="Crear Sala", response_model=Salida)
-async def crear_sala(request: Request, sala: SalaCreate) -> Salida:
-    salaDAO = SalaDAO(request.app.cn.db)
-    return salaDAO.crear(sala)
+@limiter.limit("5/minute")
+async def crear_sala(
+    request: Request,
+    sala: SalaCreate,
+    user: Usuario = Depends(allow_admin),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        salaDAO = SalaDAO(cn.db)
+        salida = salaDAO.crear(sala)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get("/salas", tags=["Salas"], summary="Listar Salas", response_model=SalasSalida)
-async def listar_salas(request: Request) -> SalasSalida:
-    salaDAO = SalaDAO(request.app.cn.db)
-    return salaDAO.consulta_general()
+@limiter.limit("5/minute")
+async def listar_salas(
+    request: Request,
+    user: Usuario = Depends(allow_all_roles),
+) -> SalasSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        salaDAO = SalaDAO(cn.db)
+        salida = salaDAO.consulta_general()
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get(
     "/salas/{idSala}", tags=["Salas"], summary="Listar Sala", response_model=SalaSalida
 )
-async def listar_sala(request: Request, idSala: str) -> SalaSalida:
-    salaDAO = SalaDAO(request.app.cn.db)
-    return salaDAO.consulta_por_id(idSala)
+@limiter.limit("5/minute")
+async def listar_sala(
+    request: Request,
+    idSala: str,
+    user: Usuario = Depends(allow_all_roles),
+) -> SalaSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        salaDAO = SalaDAO(cn.db)
+        salida = salaDAO.consulta_por_id(idSala)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get(
@@ -56,25 +100,56 @@ async def listar_sala(request: Request, idSala: str) -> SalaSalida:
     summary="Listar Salas por Estatus",
     response_model=SalasSalida,
 )
-async def listar_salas_por_estatus(request: Request, estatus: str) -> SalasSalida:
-    salaDAO = SalaDAO(request.app.cn.db)
-    return salaDAO.consulta_por_estatus(estatus)
+@limiter.limit("5/minute")
+async def listar_salas_por_estatus(
+    request: Request,
+    estatus: str,
+    user: Usuario = Depends(allow_all_roles),
+) -> SalasSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        salaDAO = SalaDAO(cn.db)
+        salida = salaDAO.consulta_por_estatus(estatus)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.put(
     "/salas/{idSala}", tags=["Salas"], summary="Modificar Sala", response_model=Salida
 )
-async def modificar_sala(request: Request, sala: SalaUpdate, idSala: str) -> Salida:
-    salaDAO = SalaDAO(request.app.cn.db)
-    return salaDAO.modificar(sala, idSala)
+@limiter.limit("5/minute")
+async def modificar_sala(
+    request: Request,
+    sala: SalaUpdate,
+    idSala: str,
+    user: Usuario = Depends(allow_admin_organizador),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        salaDAO = SalaDAO(cn.db)
+        salida = salaDAO.modificar(sala, idSala)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.delete(
     "/salas/{idSala}", tags=["Salas"], summary="Eliminar Sala", response_model=Salida
 )
-async def eliminar_sala(request: Request, idSala: str) -> Salida:
-    salaDAO = SalaDAO(request.app.cn.db)
-    return salaDAO.eliminar(idSala)
+@limiter.limit("5/minute")
+async def eliminar_sala(
+    request: Request,
+    idSala: str,
+    user: Usuario = Depends(allow_admin),
+) -> Salida:
+    cn = Conexion(user.username, user.password)
+    try:
+        salaDAO = SalaDAO(cn.db)
+        salida = salaDAO.eliminar(idSala)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 # --- Endpoints de MANTENIMIENTO ---
@@ -84,11 +159,19 @@ async def eliminar_sala(request: Request, idSala: str) -> Salida:
     summary="Crear Mantenimiento",
     response_model=Salida,
 )
+@limiter.limit("5/minute")
 async def crear_mantenimiento(
-    request: Request, mantenimiento: MantenimientoCreate
+    request: Request,
+    mantenimiento: MantenimientoCreate,
+    user: Usuario = Depends(allow_admin_organizador),
 ) -> Salida:
-    mantenimientoDAO = MantenimientoDAO(request.app.cn.db)
-    return mantenimientoDAO.asignar(mantenimiento)
+    cn = Conexion(user.username, user.password)
+    try:
+        mantenimientoDAO = MantenimientoDAO(cn.db)
+        salida = mantenimientoDAO.asignar(mantenimiento)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get(
@@ -97,9 +180,18 @@ async def crear_mantenimiento(
     summary="Listar Mantenimientos",
     response_model=MantenimientosSalida,
 )
-async def listar_mantenimientos(request: Request) -> MantenimientosSalida:
-    mantenimientoDAO = MantenimientoDAO(request.app.cn.db)
-    return mantenimientoDAO.consulta_general()
+@limiter.limit("5/minute")
+async def listar_mantenimientos(
+    request: Request,
+    user: Usuario = Depends(allow_all_roles),
+) -> MantenimientosSalida:
+    cn = Conexion(user.username, user.password)
+    try:
+        mantenimientoDAO = MantenimientoDAO(cn.db)
+        salida = mantenimientoDAO.consulta_general()
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get(
@@ -108,11 +200,19 @@ async def listar_mantenimientos(request: Request) -> MantenimientosSalida:
     summary="Listar Mantenimientos asignados a una Sala",
     response_model=MantenimientosSalida,
 )
+@limiter.limit("5/minute")
 async def listar_mantenimientos_por_id_sala(
-    request: Request, idSala: str
+    request: Request,
+    idSala: str,
+    user: Usuario = Depends(allow_all_roles),
 ) -> MantenimientosSalida:
-    mantenimientoDAO = MantenimientoDAO(request.app.cn.db)
-    return mantenimientoDAO.consulta_por_id_sala(idSala)
+    cn = Conexion(user.username, user.password)
+    try:
+        mantenimientoDAO = MantenimientoDAO(cn.db)
+        salida = mantenimientoDAO.consulta_por_id_sala(idSala)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get(
@@ -121,11 +221,19 @@ async def listar_mantenimientos_por_id_sala(
     summary="Listar Mantenimiento",
     response_model=MantenimientoSalida,
 )
+@limiter.limit("5/minute")
 async def listar_mantenimiento(
-    request: Request, idMantenimiento: str
+    request: Request,
+    idMantenimiento: str,
+    user: Usuario = Depends(allow_all_roles),
 ) -> MantenimientoSalida:
-    mantenimientoDAO = MantenimientoDAO(request.app.cn.db)
-    return mantenimientoDAO.consulta_por_id(idMantenimiento)
+    cn = Conexion(user.username, user.password)
+    try:
+        mantenimientoDAO = MantenimientoDAO(cn.db)
+        salida = mantenimientoDAO.consulta_por_id(idMantenimiento)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.get(
@@ -134,11 +242,19 @@ async def listar_mantenimiento(
     summary="Listar Mantenimientos por Estatus",
     response_model=MantenimientosSalida,
 )
+@limiter.limit("5/minute")
 async def listar_mantenimientos_por_estatus(
-    request: Request, estatus: str
+    request: Request,
+    estatus: str,
+    user: Usuario = Depends(allow_all_roles),
 ) -> MantenimientosSalida:
-    mantenimientoDAO = MantenimientoDAO(request.app.cn.db)
-    return mantenimientoDAO.consulta_por_estatus(estatus)
+    cn = Conexion(user.username, user.password)
+    try:
+        mantenimientoDAO = MantenimientoDAO(cn.db)
+        salida = mantenimientoDAO.consulta_por_estatus(estatus)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 @app.put(
@@ -147,11 +263,20 @@ async def listar_mantenimientos_por_estatus(
     summary="Modificar Mantenimiento",
     response_model=Salida,
 )
+@limiter.limit("5/minute")
 async def modificar_mantenimiento(
-    request: Request, mantenimiento: MantenimientoUpdate, idMantenimiento: str
+    request: Request,
+    mantenimiento: MantenimientoUpdate,
+    idMantenimiento: str,
+    user: Usuario = Depends(allow_admin_organizador),
 ) -> Salida:
-    mantenimientoDAO = MantenimientoDAO(request.app.cn.db)
-    return mantenimientoDAO.modificar(mantenimiento, idMantenimiento)
+    cn = Conexion(user.username, user.password)
+    try:
+        mantenimientoDAO = MantenimientoDAO(cn.db)
+        salida = mantenimientoDAO.modificar(mantenimiento, idMantenimiento)
+    finally:
+        cn.cerrar()
+    return salida
 
 
 # --- Endpoints de ACTIVIDAD ---
@@ -211,7 +336,7 @@ async def eliminar_material(request: Request, idMaterial: str) -> Salida:
 # --- Eventos de ciclo de vida y arranque ---
 @app.on_event("startup")
 def startup():
-    conexion = Conexion()
+    conexion = Conexion("", "")
     app.cn = conexion
 
 
